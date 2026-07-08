@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYC 26.2 — Adaptive Training Plan</title>
+<meta name="description" content="An adaptive marathon training plan that re-plans itself from your logged runs. Built for the 2026 NYC Marathon.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f7f3ec; --ink:#22201b; --ink-soft:#5c574c; --line:#e2dccf;
+    --card:#fffdf8; --cobalt:#1f4fd8; --cobalt-deep:#16368f;
+    --amber:#b8860b; --green:#2e7d4f; --red:#b3402e;
+    --mono:'JetBrains Mono',monospace; --serif:'Newsreader',serif; --disp:'Fraunces',serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.55}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 18px 90px}
+
+  /* header */
+  header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:6px;flex-wrap:wrap;gap:8px}
+  h1{font-family:var(--disp);font-weight:700;font-size:clamp(26px,6vw,40px);letter-spacing:-.01em}
+  h1 .dot{color:var(--cobalt)}
+  .countdown{font-family:var(--mono);font-size:13px;color:var(--ink-soft);text-align:right}
+  .countdown b{color:var(--cobalt);font-size:16px}
+  .subhead{font-family:var(--mono);font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 26px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+
+  /* adaptation banner */
+  .banner{border-left:3px solid var(--cobalt);background:var(--card);padding:12px 14px;margin-bottom:26px;font-size:15.5px}
+  .banner.warn{border-color:var(--amber)}
+  .banner.alert{border-color:var(--red)}
+  .banner .tag{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--cobalt);display:block;margin-bottom:3px}
+  .banner.warn .tag{color:var(--amber)} .banner.alert .tag{color:var(--red)}
+
+  /* section titles */
+  h2{font-family:var(--disp);font-weight:600;font-size:21px;margin:34px 0 12px;display:flex;align-items:baseline;gap:10px}
+  h2 .meta{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--ink-soft)}
+
+  /* this week */
+  .run{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:8px}
+  .run.done{opacity:.62}
+  .run.missed{opacity:.62;background:transparent}
+  .run .day{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);width:56px;flex-shrink:0}
+  .run .what{flex:1;min-width:0}
+  .run .what b{font-family:var(--disp);font-weight:600;font-size:17px}
+  .run .what span{display:block;font-size:13.5px;color:var(--ink-soft)}
+  .run .mi{font-family:var(--mono);font-size:15px;font-weight:500;white-space:nowrap}
+  .run .mi small{font-size:11px;color:var(--ink-soft)}
+  .run button{font-family:var(--mono);font-size:12px;border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:4px;padding:6px 11px;cursor:pointer;flex-shrink:0}
+  .run button:hover,.run button:focus-visible{background:var(--ink);color:var(--paper)}
+  .run .status{font-family:var(--mono);font-size:11.5px;flex-shrink:0}
+  .run .status.ok{color:var(--green)} .run .status.x{color:var(--red)}
+
+  /* season arc chart */
+  .arc-card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px 14px 8px;overflow-x:auto}
+  .legend{display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin:8px 2px 2px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  /* week table */
+  details{margin-top:14px}
+  summary{font-family:var(--mono);font-size:12.5px;color:var(--cobalt);cursor:pointer;text-transform:uppercase;letter-spacing:.06em}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+  th{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);text-align:left;padding:6px 8px;border-bottom:1px solid var(--ink)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13px}
+  tr.cur td{background:#eef2ff}
+  td .wk-note{font-family:var(--serif);font-size:13px;color:var(--ink-soft)}
+
+  /* paces */
+  .paces{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .pace{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px}
+  .pace .lbl{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft)}
+  .pace .val{font-family:var(--disp);font-size:22px;font-weight:600;margin-top:2px}
+  .pace .rpe{font-size:12.5px;color:var(--ink-soft)}
+
+  /* footer / settings */
+  .tools{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:12px}
+  .tools button,.tools label{border:none;background:none;color:var(--ink-soft);cursor:pointer;text-decoration:underline;text-underline-offset:3px;font:inherit}
+  .tools button:hover{color:var(--ink)}
+  .foot{margin-top:14px;font-size:13px;color:var(--ink-soft);font-family:var(--serif)}
+  .foot a{color:var(--cobalt)}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(34,32,27,.45);display:none;align-items:flex-end;justify-content:center;z-index:10}
+  .overlay.open{display:flex}
+  .modal{background:var(--card);width:100%;max-width:480px;border-radius:12px 12px 0 0;padding:22px 20px 30px;max-height:88vh;overflow-y:auto}
+  @media(min-width:540px){.overlay{align-items:center}.modal{border-radius:10px}}
+  .modal h3{font-family:var(--disp);font-size:20px;margin-bottom:2px}
+  .modal .sub{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:16px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:6px}
+  .field input[type=number],.field input[type=text],.field input[type=date]{width:100%;padding:10px;border:1px solid var(--line);border-radius:5px;font-family:var(--mono);font-size:16px;background:var(--paper)}
+  .rpe-row{display:flex;gap:4px}
+  .rpe-row button{flex:1;padding:9px 0;border:1px solid var(--line);background:var(--paper);border-radius:4px;font-family:var(--mono);font-size:13px;cursor:pointer}
+  .rpe-row button.sel{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
+  .chk{display:flex;align-items:center;gap:8px;font-size:15px}
+  .chk input{width:18px;height:18px;accent-color:var(--cobalt)}
+  .modal .actions{display:flex;gap:10px;margin-top:20px}
+  .btn{flex:1;padding:12px;border-radius:6px;font-family:var(--mono);font-size:14px;cursor:pointer;border:1px solid var(--ink)}
+  .btn.primary{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.danger{background:transparent;border-color:var(--red);color:var(--red)}
+  .hint{font-size:13px;color:var(--ink-soft);margin-top:6px}
+
+  @media(prefers-reduced-motion:no-preference){
+    .banner{animation:slide .35s ease-out}
+    @keyframes slide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  }
+  :focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>NYC 26<span class="dot">.</span>2</h1>
+    <div class="countdown" id="countdown"></div>
+  </header>
+  <div class="subhead">
+    <span>Adaptive training plan</span>
+    <span id="statusline"></span>
+  </div>
+
+  <div id="banner"></div>
+
+  <h2>This week <span class="meta" id="weekMeta"></span></h2>
+  <div id="thisWeek"></div>
+
+  <h2>Season arc <span class="meta">planned · adapted · actual</span></h2>
+  <div class="arc-card">
+    <div id="chart"></div>
+    <div class="legend">
+      <span><i style="background:#d8d2c4"></i>original plan</span>
+      <span><i style="background:var(--cobalt)"></i>adapted plan</span>
+      <span><i style="background:var(--ink)"></i>actual</span>
+      <span><i style="background:var(--amber)"></i>long run (mi)</span>
+    </div>
+  </div>
+
+  <details id="allWeeks">
+    <summary>Full week-by-week table</summary>
+    <div id="weekTable"></div>
+  </details>
+
+  <h2>Reference paces <span class="meta">RPE wins when they disagree</span></h2>
+  <div class="paces" id="paces"></div>
+
+  <div class="tools">
+    <button id="exportBtn">Export data</button>
+    <label>Import<input type="file" id="importFile" accept=".json" style="display:none"></label>
+    <button id="settingsBtn">Settings</button>
+    <button id="resetBtn">Reset all</button>
+  </div>
+  <p class="foot">The plan re-computes every remaining week from what you actually ran — the rules are in the <a href="README.md" id="readmeLink">README</a>. Built by Andy Robertson for the Nov 1, 2026 NYC Marathon.</p>
+</div>
+
+<!-- log modal -->
+<div class="overlay" id="logOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3 id="logTitle">Log run</h3>
+    <div class="sub" id="logSub"></div>
+    <div class="field">
+      <label for="actualMi">Miles completed</label>
+      <input type="number" id="actualMi" step="0.1" min="0" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label>Effort (RPE) — how hard did it feel?</label>
+      <div class="rpe-row" id="rpeRow"></div>
+      <p class="hint" id="rpeHint">Easy runs should feel like a 3–5: full sentences, nose-breathing possible.</p>
+    </div>
+    <div class="field chk">
+      <input type="checkbox" id="acheChk"><label for="acheChk" style="all:unset;cursor:pointer">Any new ache, pain, or niggle?</label>
+    </div>
+    <div class="field">
+      <label for="noteTxt">Note (optional)</label>
+      <input type="text" id="noteTxt" maxlength="120" placeholder="humid, felt strong after mile 3…">
+    </div>
+    <div class="actions">
+      <button class="btn danger" id="missedBtn">Missed it</button>
+      <button class="btn ghost" id="cancelBtn">Cancel</button>
+      <button class="btn primary" id="saveBtn">Save run</button>
+    </div>
+  </div>
+</div>
+
+<!-- settings modal -->
+<div class="overlay" id="setOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3>Settings</h3>
+    <div class="sub">Changing these re-plans all future weeks. Logged runs are kept.</div>
+    <div class="field">
+      <label for="setStartMpw">Starting weekly mileage</label>
+      <input type="number" id="setStartMpw" min="5" max="60" step="1">
+    </div>
+    <div class="field">
+      <label for="setDays">Run days per week</label>
+      <input type="number" id="setDays" min="3" max="5" step="1">
+    </div>
+    <div class="field">
+      <label for="setHM">Recent half marathon (minutes, for pace refs)</label>
+      <input type="number" id="setHM" min="60" max="240" step="1">
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="setCancel">Cancel</button>
+      <button class="btn primary" id="setSave">Save & re-plan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   NYC 26.2 — adaptive marathon plan
+   Everything is deterministic and re-derivable from the log.
+   State = { config, log: {runId: {mi, rpe, ache, note, missed}} }
+   ============================================================ */
+
+const RACE = new Date(2026, 10, 1);            // Sun Nov 1 2026
+const PLAN_START = new Date(2026, 6, 6);       // Mon Jul 6 2026 (week 1)
+const DAY_MS = 86400000;
+
+const DEFAULTS = { startMpw: 20, days: 4, hmMinutes: 107 };
+
+/* ---------- storage (localStorage w/ in-memory fallback) ---------- */
+const store = (() => {
+  let mem = {};
+  let ok = true;
+  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }
+  catch(e){ ok = false; }
+  return {
+    get(k){ try { return ok ? JSON.parse(localStorage.getItem(k)) : (mem[k] ?? null); } catch(e){ return null; } },
+    set(k,v){ try { if(ok) localStorage.setItem(k, JSON.stringify(v)); else mem[k]=v; } catch(e){ mem[k]=v; } }
+  };
+})();
+
+let state = store.get("nyc262") || { config: {...DEFAULTS}, log: {} };
+state.config = Object.assign({...DEFAULTS}, state.config);
+
+function save(){ store.set("nyc262", state); }
+
+/* ---------- date helpers ---------- */
+const fmtDay = d => d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+function weekOf(date){ return Math.floor((date - PLAN_START) / (7*DAY_MS)) + 1; }
+function mondayOf(w){ return new Date(PLAN_START.getTime() + (w-1)*7*DAY_MS); }
+const TOTAL_WEEKS = weekOf(RACE); // 17
+const TAPER = [TOTAL_WEEKS-2, TOTAL_WEEKS-1, TOTAL_WEEKS]; // 15,16,17
+
+/* ---------- plan generation ----------
+   buildPlan(fromWeek, baseVolume, baseLong, longestRecent)
+   Generates weeks fromWeek..TOTAL_WEEKS given a starting volume.
+   Rules:
+   - ramp ≤ 9%/wk, absolute cap 46 mpw
+   - cutback (-25%) every 4th building week
+   - peak = 3 weeks before race, then taper 72% / 55% / race week
+   - long run ≈ 38% of volume, grows ≤ 2 mi per step, peak ≤ 20,
+     and never > longestRecent + 2.5 (legs > lungs rule)
+--------------------------------------------------------------- */
+function buildPlan(fromWeek, baseVol, baseLong, longestRecent){
+  const weeks = {};
+  let vol = baseVol, lng = baseLong, buildIdx = 0;
+  let legRef = Math.max(longestRecent || 0, baseLong); // longest recent long run
+  for(let w = fromWeek; w <= TOTAL_WEEKS; w++){
+    let type = "build", tvol, tlong;
+    if(w === TOTAL_WEEKS){ type = "race"; }
+    else if(w >= TOTAL_WEEKS-2){ type = "taper"; }
+    if(type === "build"){
+      if(w > fromWeek){
+        buildIdx++;
+        if(buildIdx % 4 === 0){ type = "cutback"; }
+        else {
+          vol = Math.min(vol * 1.08, 44);
+          // long run: +1.5/wk, ≤44% of volume, ≤ recent-longest + 2.5, ≤ 20
+          lng = Math.min(lng + 1.5, vol * 0.44, legRef + 2.5, 20);
+          legRef = Math.max(legRef, lng);
+        }
+      }
+      tvol = vol; tlong = lng;
+      if(type === "cutback"){ tvol = vol * 0.75; tlong = Math.max(lng - 4, 7); }
+    } else if(type === "taper"){
+      tvol = (w === TOTAL_WEEKS-2) ? vol * 0.70 : vol * 0.52;
+      tlong = (w === TOTAL_WEEKS-2) ? 12 : 8;
+    } else { // race week
+      tvol = Math.min(vol * 0.3, 13); tlong = 26.2;
+    }
+    weeks[w] = { week:w, type, vol: round1(tvol), long: type==="race" ? 26.2 : Math.round(tlong*2)/2 };
+  }
+  return weeks;
+}
+
+function round1(x){ return Math.round(x*10)/10; }
+
+/* distribute a week's volume into runs */
+const DAY_SLOTS = {
+  3: [["Tue","Easy"],["Thu","Easy + strides"],["Sun","Long"]],
+  4: [["Tue","Easy"],["Thu","Easy + strides"],["Sat","Easy"],["Sun","Long"]],
+  5: [["Mon","Easy"],["Tue","Easy"],["Thu","Easy + strides"],["Sat","Easy"],["Sun","Long"]]
+};
+function runsForWeek(wk, days){
+  if(wk.type === "race"){
+    return [
+      mkRun(wk.week,"Tue","Easy",3),
+      mkRun(wk.week,"Thu","Easy + strides",3),
+      mkRun(wk.week,"Sun","RACE — NYC Marathon",26.2,true)
+    ];
+  }
+  const slots = DAY_SLOTS[days] || DAY_SLOTS[4];
+  const rest = Math.max(wk.vol - wk.long, 0);
+  const n = slots.length - 1;
+  const runs = [];
+  // weight midweek slightly: last easy day before long is shortest
+  const weights = n===2 ? [.55,.45] : n===3 ? [.4,.35,.25] : [.28,.26,.26,.20];
+  slots.forEach((s,i)=>{
+    if(s[1]==="Long"){ runs.push(mkRun(wk.week,s[0],"Long run",wk.long,true)); }
+    else { runs.push(mkRun(wk.week,s[0],s[1], round1(rest*weights[i]) )); }
+  });
+  return runs;
+}
+function mkRun(week,day,label,mi,isLong){
+  return { id:`w${week}-${day}`, week, day, label, mi:round1(mi), isLong:!!isLong };
+}
+
+/* ---------- adaptation engine ----------
+   Walk weeks 1..current. For each completed week, compute signals
+   and decide next week's base volume. Returns:
+   { weeks (adapted), notes[], flags }
+--------------------------------------------------------------- */
+function adapt(){
+  const c = state.config;
+  const original = buildPlan(1, c.startMpw, Math.max(6, c.startMpw*0.38), c.startMpw*0.4);
+  const today = new Date();
+  const curWeek = Math.min(Math.max(weekOf(today),1), TOTAL_WEEKS);
+
+  let adapted = {...original};
+  let vol = c.startMpw;
+  let lng = Math.max(6, Math.round(c.startMpw*0.4));
+  let recentLongs = [lng];   // completed long runs, most recent last
+  let notes = [];
+  let level = "info";
+
+  const recentLongest = () => Math.max(...recentLongs.slice(-3), 0);
+
+  /* --- completed weeks: full rules --- */
+  for(let w = 1; w < curWeek; w++){
+    const wk = adapted[w];
+    const runs = runsForWeek(wk, c.days);
+    const logs = runs.map(r => state.log[r.id]).filter(Boolean);
+    const done = logs.filter(l => !l.missed);
+    const actualMi = done.reduce((s,l)=>s+(+l.mi||0),0);
+    const ratio = wk.vol ? actualMi/wk.vol : 1;
+    const rpes = done.filter(l=>l.rpe).map(l=>+l.rpe);
+    const avgRpe = rpes.length ? rpes.reduce((a,b)=>a+b,0)/rpes.length : null;
+    const aches = done.filter(l=>l.ache).length;
+    const longRun = runs.find(r=>r.isLong);
+    const longLog = longRun ? state.log[longRun.id] : null;
+    const longDone = longLog && !longLog.missed ? +longLog.mi : 0;
+    if(longDone > 0) recentLongs.push(longDone);
+
+    if(logs.length === 0){ vol = wk.vol; lng = wk.long; continue; } // unlogged week: neutral
+
+    if(aches >= 2 || (avgRpe !== null && avgRpe >= 7.5)){
+      vol = (actualMi > 0 ? Math.min(actualMi, wk.vol) : wk.vol) * 0.75;
+      lng = Math.max((longDone || wk.long) - 3, 7);
+      notes.push(`Week ${w}: high strain (${aches>=2 ? aches+" ache flags" : "avg RPE "+avgRpe.toFixed(1)}) → cutback inserted, ramp restarts gently.`);
+      level = "alert";
+    } else if(ratio >= 0.85){
+      vol = Math.max(actualMi, wk.vol);                     // progress as planned
+      lng = Math.max(longDone, wk.long);
+    } else if(ratio >= 0.6){
+      vol = wk.vol;                                          // hold, no progression
+      lng = longDone || wk.long;
+      notes.push(`Week ${w}: ${Math.round(ratio*100)}% of volume completed → holding, not progressing.`);
+      if(level==="info") level = "warn";
+    } else {
+      vol = Math.max(actualMi, wk.vol * 0.9);                // step back
+      lng = Math.max(longDone || wk.long - 2, 6);
+      notes.push(`Week ${w}: only ${Math.round(ratio*100)}% completed → stepping volume back ~10%.`);
+      level = "warn";
+    }
+    if(longLog && longLog.missed){
+      lng = Math.min(lng, wk.long);
+      notes.push(`Week ${w}: long run missed → the ${wk.long}-mi target repeats next week; it doesn't disappear.`);
+      if(level==="info") level = "warn";
+    }
+    adapted = Object.assign({}, adapted, buildPlan(w+1, vol, lng, recentLongest()));
+  }
+
+  /* --- current week: react to strain immediately, never to incomplete volume --- */
+  if(curWeek < TOTAL_WEEKS){
+    const wk = adapted[curWeek];
+    const runs = runsForWeek(wk, c.days);
+    const done = runs.map(r=>state.log[r.id]).filter(l=>l && !l.missed);
+    const aches = done.filter(l=>l.ache).length;
+    const hiRpe = done.filter(l=>+l.rpe >= 8).length;
+    const longRun = runs.find(r=>r.isLong);
+    const longLog = longRun ? state.log[longRun.id] : null;
+    if(aches >= 2 || hiRpe >= 2){
+      adapted = Object.assign({}, adapted, buildPlan(curWeek+1, wk.vol*0.75, Math.max(wk.long-3,7), recentLongest()));
+      notes.push(`This week: ${aches>=2 ? "repeated ache flags" : "two runs at RPE 8+"} → next week is now a cutback. Ease off; if anything sharpens, take 2–3 days fully off.`);
+      level = "alert";
+    } else if(longLog && longLog.missed){
+      adapted = Object.assign({}, adapted, buildPlan(curWeek+1, wk.vol, Math.min(adapted[curWeek+1]?.long ?? wk.long, wk.long), recentLongest()));
+      notes.push(`This week's long run marked missed → next week repeats the ${wk.long}-mi target before progressing.`);
+      if(level==="info") level = "warn";
+    }
+  }
+
+  // race-readiness flag
+  const peak = adapted[TOTAL_WEEKS-3];
+  let readiness = null;
+  if(peak && peak.long < 16){
+    readiness = `Current trajectory peaks at a ${peak.long}-mi long run. Fine to race — shift the goal to finishing strong and consider planned run-walk from mile 16.`;
+  }
+  return { original, adapted, curWeek, notes, level, readiness };
+}
+
+/* ---------- paces from HM time (Riegel r=1.06) ---------- */
+function paces(){
+  const hm = state.config.hmMinutes;
+  const mar = hm * Math.pow(2, 1.06);            // predicted marathon, minutes
+  const mp = mar / 26.2;
+  const fmt = m => `${Math.floor(m)}:${String(Math.round((m%1)*60)).padStart(2,"0")}`;
+  return [
+    { lbl:"Easy / long", val:`${fmt(mp+1.3)}–${fmt(mp+2.1)}`, rpe:"RPE 3–5 · conversational" },
+    { lbl:"Marathon effort", val:fmt(mp), rpe:"RPE 6 · only in final long runs" },
+    { lbl:"Strides", val:"15–20s fast", rpe:"RPE 8 · 4–6 × after easy runs" },
+    { lbl:"Predicted finish", val:`${Math.floor(mar/60)}:${String(Math.round(mar%60)).padStart(2,"0")}`, rpe:"from your half — detrained: add 10–15 min" }
+  ];
+}
+
+/* ---------- rendering ---------- */
+const $ = id => document.getElementById(id);
+let plan = null;
+
+function render(){
+  plan = adapt();
+  const c = state.config;
+  const today = new Date();
+  const daysToRace = Math.ceil((RACE - today)/DAY_MS);
+
+  $("countdown").innerHTML = `<b>${daysToRace}</b> days to race day<br>Sun Nov 1, 2026`;
+  const curWk = plan.adapted[plan.curWeek];
+  $("statusline").textContent = `Week ${plan.curWeek} of ${TOTAL_WEEKS} · ${curWk.type}`;
+
+  // banner
+  const b = $("banner");
+  if(plan.readiness){
+    b.innerHTML = `<div class="banner alert"><span class="tag">Readiness check</span>${plan.readiness}</div>`;
+  } else if(plan.notes.length){
+    const last = plan.notes[plan.notes.length-1];
+    b.innerHTML = `<div class="banner ${plan.level}"><span class="tag">Plan adapted</span>${last}</div>`;
+  } else {
+    b.innerHTML = `<div class="banner"><span class="tag">On plan</span>Log every run — the remaining ${TOTAL_WEEKS-plan.curWeek} weeks re-plan themselves from what you actually do.</div>`;
+  }
+
+  // this week
+  const mon = mondayOf(plan.curWeek);
+  const sun = new Date(mon.getTime()+6*DAY_MS);
+  $("weekMeta").textContent = `${fmtDay(mon)} – ${fmtDay(sun)} · ${curWk.vol} mi target`;
+  const runs = runsForWeek(curWk, c.days);
+  $("thisWeek").innerHTML = runs.map(r=>{
+    const l = state.log[r.id];
+    const cls = l ? (l.missed?"missed":"done") : "";
+    const status = l ? (l.missed
+        ? `<span class="status x">missed</span>`
+        : `<span class="status ok">✓ ${l.mi} mi · RPE ${l.rpe||"–"}</span>`)
+      : `<button data-run="${r.id}" data-mi="${r.mi}" data-label="${r.label}" data-day="${r.day}">Log</button>`;
+    return `<div class="run ${cls}">
+      <div class="day">${r.day}</div>
+      <div class="what"><b>${r.label}</b><span>${r.isLong && r.label!=="RACE — NYC Marathon" ? "RPE 3–5, fuel every 45 min" : r.label.includes("strides") ? "finish with 4–6 × 20s strides" : r.label.startsWith("RACE") ? "the whole point" : "conversational pace"}</span></div>
+      <div class="mi">${r.mi}<small> mi</small></div>
+      ${status}
+    </div>`;
+  }).join("");
+  document.querySelectorAll("#thisWeek button").forEach(btn=>{
+    btn.addEventListener("click",()=>openLog(btn.dataset));
+  });
+
+  renderChart();
+  renderTable();
+  $("paces").innerHTML = paces().map(p=>
+    `<div class="pace"><div class="lbl">${p.lbl}</div><div class="val">${p.val}</div><div class="rpe">${p.rpe}</div></div>`
+  ).join("");
+}
+
+function actualForWeek(w){
+  const runs = runsForWeek(plan.adapted[w], state.config.days);
+  let mi = 0, any = false;
+  runs.forEach(r=>{ const l = state.log[r.id]; if(l && !l.missed){ mi += +l.mi||0; any = true; }});
+  return any ? round1(mi) : null;
+}
+
+function renderChart(){
+  const W = Math.max(680, TOTAL_WEEKS*40), H = 210, pad = {l:30,r:8,t:16,b:26};
+  const iw = (W-pad.l-pad.r)/TOTAL_WEEKS;
+  const maxV = 50;
+  const y = v => pad.t + (H-pad.t-pad.b) * (1 - v/maxV);
+  let bars = "", longs = "", labels = "";
+  for(let w=1; w<=TOTAL_WEEKS; w++){
+    const x = pad.l + (w-1)*iw;
+    const o = plan.original[w], a = plan.adapted[w], act = actualForWeek(w);
+    const bw = iw*0.62;
+    bars += `<rect x="${x+iw*0.19}" y="${y(o.vol)}" width="${bw}" height="${H-pad.b-y(o.vol)}" fill="#d8d2c4"/>`;
+    if(w >= plan.curWeek || a.vol !== o.vol){
+      bars += `<rect x="${x+iw*0.19}" y="${y(a.vol)}" width="${bw}" height="${H-pad.b-y(a.vol)}" fill="none" stroke="#1f4fd8" stroke-width="1.6"/>`;
+    }
+    if(act !== null){
+      bars += `<rect x="${x+iw*0.30}" y="${y(act)}" width="${bw*0.62}" height="${H-pad.b-y(act)}" fill="#22201b"/>`;
+    }
+    const lg = a.type==="race" ? null : a.long;
+    if(lg){ longs += `<circle cx="${x+iw*0.5}" cy="${y(lg)}" r="3.4" fill="#b8860b"/>`; }
+    if(w===1 || w%4===0 || w===TOTAL_WEEKS){
+      labels += `<text x="${x+iw*0.5}" y="${H-8}" font-size="10" text-anchor="middle" fill="#5c574c" font-family="JetBrains Mono">W${w}</text>`;
+    }
+    if(w===plan.curWeek){
+      bars = `<rect x="${x}" y="${pad.t-6}" width="${iw}" height="${H-pad.t-pad.b+12}" fill="#1f4fd8" opacity="0.07"/>` + bars;
+    }
+    if(a.type==="race"){
+      labels += `<text x="${x+iw*0.5}" y="${pad.t+2}" font-size="12" text-anchor="middle">🏁</text>`;
+    }
+  }
+  let axis = "";
+  [10,20,30,40].forEach(v=>{
+    axis += `<line x1="${pad.l}" x2="${W-pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="#e2dccf" stroke-width="1"/>
+             <text x="${pad.l-6}" y="${y(v)+3}" font-size="9.5" text-anchor="end" fill="#5c574c" font-family="JetBrains Mono">${v}</text>`;
+  });
+  $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Weekly mileage: original vs adapted vs actual">${axis}${bars}${longs}${labels}</svg>`;
+}
+
+function renderTable(){
+  let rows = "";
+  for(let w=1; w<=TOTAL_WEEKS; w++){
+    const a = plan.adapted[w], act = actualForWeek(w);
+    const mon = mondayOf(w);
+    rows += `<tr class="${w===plan.curWeek?"cur":""}">
+      <td>W${w}</td><td>${fmtDay(mon)}</td>
+      <td>${a.vol}</td><td>${act ?? "–"}</td>
+      <td>${a.type==="race" ? "26.2" : a.long}</td>
+      <td><span class="wk-note">${a.type}</span></td></tr>`;
+  }
+  $("weekTable").innerHTML = `<table><thead><tr><th>Wk</th><th>Mon</th><th>Plan mi</th><th>Actual</th><th>Long</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ---------- log modal ---------- */
+let activeRun = null, selRpe = null;
+function openLog(d){
+  activeRun = d.run;
+  $("logTitle").textContent = `Log — ${d.label}`;
+  $("logSub").textContent = `${d.day} · planned ${d.mi} mi`;
+  $("actualMi").value = d.mi;
+  $("acheChk").checked = false; $("noteTxt").value = "";
+  selRpe = null;
+  $("rpeRow").innerHTML = Array.from({length:10},(_,i)=>
+    `<button type="button" data-r="${i+1}">${i+1}</button>`).join("");
+  document.querySelectorAll("#rpeRow button").forEach(b=>{
+    b.addEventListener("click",()=>{
+      selRpe = +b.dataset.r;
+      document.querySelectorAll("#rpeRow button").forEach(x=>x.classList.toggle("sel", x===b));
+    });
+  });
+  $("logOverlay").classList.add("open");
+  $("actualMi").focus();
+}
+function closeLog(){ $("logOverlay").classList.remove("open"); activeRun = null; }
+$("cancelBtn").addEventListener("click", closeLog);
+$("saveBtn").addEventListener("click", ()=>{
+  if(!activeRun) return;
+  state.log[activeRun] = { mi:+$("actualMi").value||0, rpe:selRpe, ache:$("acheChk").checked, note:$("noteTxt").value.trim(), missed:false, ts:Date.now() };
+  save(); closeLog(); render();
+});
+$("missedBtn").addEventListener("click", ()=>{
+  if(!activeRun) return;
+  state.log[activeRun] = { missed:true, ts:Date.now() };
+  save(); closeLog(); render();
+});
+$("logOverlay").addEventListener("click", e=>{ if(e.target===$("logOverlay")) closeLog(); });
+
+/* ---------- settings ---------- */
+$("settingsBtn").addEventListener("click", ()=>{
+  $("setStartMpw").value = state.config.startMpw;
+  $("setDays").value = state.config.days;
+  $("setHM").value = state.config.hmMinutes;
+  $("setOverlay").classList.add("open");
+});
+$("setCancel").addEventListener("click", ()=> $("setOverlay").classList.remove("open"));
+$("setSave").addEventListener("click", ()=>{
+  state.config.startMpw = Math.min(60, Math.max(5, +$("setStartMpw").value||20));
+  state.config.days = Math.min(5, Math.max(3, +$("setDays").value||4));
+  state.config.hmMinutes = Math.min(240, Math.max(60, +$("setHM").value||107));
+  save(); $("setOverlay").classList.remove("open"); render();
+});
+$("setOverlay").addEventListener("click", e=>{ if(e.target===$("setOverlay")) $("setOverlay").classList.remove("open"); });
+
+/* ---------- export / import / reset ---------- */
+$("exportBtn").addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "nyc262-data.json"; a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("importFile").addEventListener("change", e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{ try{ const d = JSON.parse(r.result); if(d && d.config && d.log){ state = d; save(); render(); } }catch(err){ alert("Couldn't read that file."); } };
+  r.readAsText(f);
+});
+$("resetBtn").addEventListener("click", ()=>{
+  if(confirm("Erase all logged runs and settings?")){ state = { config:{...DEFAULTS}, log:{} }; save(); render(); }
+});
+
+render();
+</script>
+</body>
+</html>
