@@ -2,7 +2,7 @@
 
 A single-file training plan for the 2026 NYC Marathon (Nov 1) that **re-plans itself from what you actually run**, not what you were supposed to run.
 
-**Live:** https://YOUR-USERNAME.github.io/nyc-26.2/
+**Live:** https://run.arobertson.dev
 
 No build step, no dependencies, no backend. One HTML file. Data lives in your browser (localStorage), with JSON export/import.
 
