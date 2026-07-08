@@ -10,7 +10,7 @@ No build step, no dependencies, no backend. One HTML file. Data lives in your br
 
 Static training plans fail at the first missed week, and most runners respond by either cramming (injury) or abandoning the plan (drift). The interesting part of coaching isn't the initial schedule — it's the *re-planning* after reality intervenes. This encodes that re-planning as a small set of deterministic rules.
 
-The starting point is me: ~20 mpw base, a 1:47 half a year ago but detrained since, 17 weeks to race day. The generated plan builds from 20 to a ~43-mile peak week with an 18–20 mile long run three weeks out, then a three-week taper.
+The starting point is me: ~20-25 mpw base, a 1:45 half a year ago but detrained since, 16-17 weeks to race day. The generated plan builds from 20 to a ~43-mile peak week with an 18–20 mile long run three weeks out, then a three-week taper.
 
 ## The adaptation rules
 
